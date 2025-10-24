@@ -1,0 +1,129 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Action": [
+                "cloudformation:CreateStack",
+                "cloudformation:UpdateStack",
+                "cloudformation:DeleteStack",
+                "cloudformation:DescribeStacks",
+                "cloudformation:CreateChangeSet",
+                "cloudformation:ExecuteChangeSet",
+                "cloudformation:DescribeChangeSet",
+                "cloudformation:GetTemplate"
+            ],
+            "Resource": "*",
+            "Effect": "Allow",
+            "Sid": "CloudFormationAccess"
+        },
+        {
+            "Action": [
+                "lambda:CreateFunction",
+                "lambda:UpdateFunctionCode",
+                "lambda:UpdateFunctionConfiguration",
+                "lambda:AddPermission",
+                "lambda:RemovePermission",
+                "lambda:DeleteFunction",
+                "lambda:GetFunction",
+                "lambda:ListFunctions"
+            ],
+            "Resource": "*",
+            "Effect": "Allow",
+            "Sid": "LambdaManagement"
+        },
+        {
+            "Action": "iam:PassRole",
+            "Resource": "arn:aws:iam::497310927206:role/CallbackLambdaExecutionRole",
+            "Effect": "Allow",
+            "Sid": "IAMPassRoleForLambda"
+        },
+        {
+            "Action": [
+                "apigateway:POST",
+                "apigateway:PUT",
+                "apigateway:GET",
+                "apigateway:DELETE",
+                "apigateway:PATCH"
+            ],
+            "Resource": "*",
+            "Effect": "Allow",
+            "Sid": "ApiGatewayAccess"
+        },
+        {
+            "Action": [
+                "dynamodb:CreateTable",
+                "dynamodb:DeleteTable",
+                "dynamodb:DescribeTable",
+                "dynamodb:UpdateTable",
+                "dynamodb:PutItem",
+                "dynamodb:GetItem"
+            ],
+            "Resource": "*",
+            "Effect": "Allow",
+            "Sid": "DynamoDBAccess"
+        },
+        {
+            "Action": [
+                "sns:CreateTopic",
+                "sns:DeleteTopic",
+                "sns:Publish",
+                "sns:Subscribe",
+                "sns:GetTopicAttributes"
+            ],
+            "Resource": "*",
+            "Effect": "Allow",
+            "Sid": "SNSAccess"
+        },
+        {
+            "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+            ],
+            "Resource": "*",
+            "Effect": "Allow",
+            "Sid": "LoggingAccess"
+        },
+        {
+            "Sid": "IAMReadAccess",
+            "Effect": "Allow",
+            "Action": [
+                "iam:GetRole",
+                "iam:ListRoles"
+            ],
+            "Resource": "arn:aws:iam::497310927206:role/PulseUsCallbackLambdaExecutionRole"
+        },
+        {
+            "Sid": "IAMPassAndReadRole",
+            "Effect": "Allow",
+            "Action": [
+                "iam:PassRole",
+                "iam:GetRole",
+                "iam:ListRoles"
+            ],
+            "Resource": "arn:aws:iam::497310927206:role/PulseUsCallbackLambdaExecutionRole"
+        },
+        {
+            "Sid": "IAMRoleCreationAndTagging",
+            "Effect": "Allow",
+            "Action": [
+                "iam:CreateRole",
+                "iam:TagRole",
+                "iam:UntagRole",
+                "iam:PutRolePolicy",
+                "iam:AttachRolePolicy",
+                "iam:DeleteRolePolicy"
+            ],
+            "Resource": "arn:aws:iam::497310927206:role/PulseUsCallbackLambdaExecutionRole"
+        },
+        {
+            "Sid": "GeneralTaggingAccess",
+            "Effect": "Allow",
+            "Action": [
+                "tag:TagResources",
+                "tag:UntagResources"
+            ],
+            "Resource": "*"
+        }
+    ]
+}

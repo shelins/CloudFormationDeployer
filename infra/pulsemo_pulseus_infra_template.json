@@ -1,0 +1,268 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Serverless Callback Notification System Pulse Us",
+  "Resources": {
+    "CallbackTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "TableName": "PulseUsRequests",
+        "AttributeDefinitions": [
+          { "AttributeName": "id", "AttributeType": "S" }
+        ],
+        "KeySchema": [
+          { "AttributeName": "id", "KeyType": "HASH" }
+        ],
+        "BillingMode": "PAY_PER_REQUEST"
+      }
+    },
+    "CallbackTopic": {
+      "Type": "AWS::SNS::Topic",
+      "Properties": {
+        "TopicName": "PulseUsCallbackNotifications"
+      }
+    },
+    "CallbackEmailSubscriptionArun": {
+      "Type": "AWS::SNS::Subscription",
+      "Properties": {
+        "TopicArn": { "Ref": "CallbackTopic" },
+        "Protocol": "email",
+        "Endpoint": "arun.jads.android@gmail.com"
+      }
+    },
+    "CallbackEmailSubscriptionPulsemo": {
+      "Type": "AWS::SNS::Subscription",
+      "Properties": {
+        "TopicArn": { "Ref": "CallbackTopic" },
+        "Protocol": "email",
+        "Endpoint": "pulsemodev@gmail.com"
+      }
+    },
+    "CallbackLambdaRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": "PulseUsCallbackLambdaExecutionRole",
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": { "Service": "lambda.amazonaws.com" },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "PulseUsCallbackLambdaPolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": ["dynamodb:PutItem"],
+                  "Resource": { "Fn::GetAtt": ["CallbackTable", "Arn"] }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": ["sns:Publish"],
+                  "Resource": { "Ref": "CallbackTopic" }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "CallbackLambda": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "FunctionName": "CallbackHandler",
+        "Runtime": "nodejs16.x",
+        "Handler": "index.handler",
+        "Role": { "Fn::GetAtt": ["CallbackLambdaRole", "Arn"] },
+        "Code": {
+  "ZipFile": {
+    "Fn::Join": ["\n", [
+      "const AWS = require('aws-sdk');",
+      "const dynamo = new AWS.DynamoDB.DocumentClient();",
+      "const sns = new AWS.SNS();",
+      "exports.handler = async (event) => {",
+      "  let body;",
+      "  try {",
+      "    body = JSON.parse(event.body);",
+      "  } catch (err) {",
+      "    return {",
+      "      statusCode: 400,",
+      "      headers: { 'Access-Control-Allow-Origin': '*' },",
+      "      body: JSON.stringify({ error: 'Invalid JSON format' })",
+      "    };",
+      "  }",
+      "  const { name, phone, message } = body;",
+      "  const phoneRegex = /^\\+?[1-9]\\d{1,14}$/; // E.164 format",
+      "  if (",
+      "    typeof name !== 'string' || name.trim() === '' ||",
+      "    typeof phone !== 'string' || phone.trim() === '' || !phoneRegex.test(phone) ||",
+      "    typeof message !== 'string' || message.trim() === ''",
+      "  ) {",
+      "    return {",
+      "      statusCode: 400,",
+      "      headers: { 'Access-Control-Allow-Origin': '*' },",
+      "      body: JSON.stringify({ error: 'Missing or invalid fields: name, phone (E.164), message' })",
+      "    };",
+      "  }",
+      "  await dynamo.put({",
+      "    TableName: process.env.TABLE_NAME,",
+      "    Item: {",
+      "      id: Date.now().toString(),",
+      "      name,",
+      "      phone,",
+      "      message,",
+      "      timestamp: new Date().toISOString()",
+      "    }",
+      "  }).promise();",
+      "  await sns.publish({",
+      "    TopicArn: process.env.TOPIC_ARN,",
+      "    Message: `Pulse Us New callback request from ${name} (${phone}): ${message}`",
+      "  }).promise();",
+      "  return {",
+      "    statusCode: 200,",
+      "    headers: { 'Access-Control-Allow-Origin': '*' },",
+      "    body: JSON.stringify({ success: true })",
+      "  };",
+      "};"
+    ]]
+  }
+},
+        "Environment": {
+          "Variables": {
+            "TABLE_NAME": { "Ref": "CallbackTable" },
+            "TOPIC_ARN": { "Ref": "CallbackTopic" }
+          }
+        },
+        "Timeout": 10
+      }
+    },
+    "CallbackApi": {
+      "Type": "AWS::ApiGateway::RestApi",
+      "Properties": {
+        "Name": "PulseUsCallbackAPI"
+      }
+    },
+    "CallbackApiDeployment": {
+  "Type": "AWS::ApiGateway::Deployment",
+  "DependsOn": ["CallbackMethod", "CallbackOptionsMethod"],
+  "Properties": {
+    "RestApiId": { "Ref": "CallbackApi" },
+    "StageName": "prod"
+  }
+},
+    "CallbackResource": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": { "Fn::GetAtt": ["CallbackApi", "RootResourceId"] },
+        "PathPart": "callback",
+        "RestApiId": { "Ref": "CallbackApi" }
+      }
+    },
+    "CallbackMethod": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "RestApiId": { "Ref": "CallbackApi" },
+        "ResourceId": { "Ref": "CallbackResource" },
+        "HttpMethod": "POST",
+        "AuthorizationType": "NONE",
+        "Integration": {
+          "Type": "AWS_PROXY",
+          "IntegrationHttpMethod": "POST",
+          "Uri": {
+            "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CallbackLambda.Arn}/invocations"
+          },
+          "IntegrationResponses": [
+            {
+              "StatusCode": "200",
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Origin": "'*'"
+              }
+            }
+          ]
+        },
+        "MethodResponses": [
+          {
+            "StatusCode": "200",
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Origin": true
+            }
+          }
+        ]
+      }
+    },
+    "CallbackOptionsMethod": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "RestApiId": { "Ref": "CallbackApi" },
+        "ResourceId": { "Ref": "CallbackResource" },
+        "HttpMethod": "OPTIONS",
+        "AuthorizationType": "NONE",
+        "Integration": {
+          "Type": "MOCK",
+          "RequestTemplates": {
+            "application/json": "{\"statusCode\": 200}"
+          },
+          "IntegrationResponses": [
+            {
+              "StatusCode": "200",
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type'",
+                "method.response.header.Access-Control-Allow-Methods": "'POST,OPTIONS'",
+                "method.response.header.Access-Control-Allow-Origin": "'*'"
+              },
+              "ResponseTemplates": {
+                "application/json": ""
+              }
+            }
+          ]
+        },
+        "MethodResponses": [
+          {
+            "StatusCode": "200",
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Methods": true,
+              "method.response.header.Access-Control-Allow-Origin": true
+            }
+          }
+        ]
+      }
+    },
+    "LambdaInvokePermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": { "Ref": "CallbackLambda" },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Sub": "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${CallbackApi}/*/POST/callback"
+          
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "ApiEndpoint": {
+      "Description": "API Gateway endpoint for Pulse Us",
+      "Value": {
+        "Fn::Sub": "https://${CallbackApi}.execute-api.${AWS::Region}.amazonaws.com/prod/callback"
+        
+      }
+    }
+  }
+}

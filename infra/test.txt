@@ -1,0 +1,1 @@
+aws cloudformation describe-change-set --change-set-name callback-changeset-20251024221706 --stack-name pulsemo-pulseus-infra
