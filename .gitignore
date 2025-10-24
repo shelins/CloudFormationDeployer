@@ -476,4 +476,4 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
-infra\CFRunner_accessKeys.csv
+.\infra\CFRunner_accessKeys.csv
